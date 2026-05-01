@@ -1,17 +1,3 @@
-# Pre-filled starter for the extra-credit pipeline exam.
-#
-# What's already done for you:
-#   - Four services declared: api, worker, db, redis
-#   - A NAMED VOLUME `pipeline_data` mounted in BOTH api and worker at /data.
-#     Stages will read/write files under /data/<job_id>/ and both containers see them.
-#
-# What you still need to wire up:
-#   - Environment variables for DB/Redis URLs in api and worker
-#   - Healthchecks for db and redis
-#   - depends_on conditions for api and worker so they wait for db + redis to be HEALTHY
-#   - The actual command for each service (api: flask run; worker: rq worker)
-#   - Anything else the spec requires
-
 services:
   api:
     build: .
@@ -19,13 +5,29 @@ services:
       - "5000:5000"
     volumes:
       - pipeline_data:/data
-    # TODO: environment, depends_on, command
+    environment:
+      DATABASE_URL: postgresql://pipeline:pipeline@db:5432/pipeline
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python app.py
 
   worker:
     build: .
     volumes:
       - pipeline_data:/data
-    # TODO: environment, depends_on, command
+    environment:
+      DATABASE_URL: postgresql://pipeline:pipeline@db:5432/pipeline
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python worker.py
 
   db:
     image: postgres:15
@@ -33,11 +35,21 @@ services:
       POSTGRES_USER: pipeline
       POSTGRES_PASSWORD: pipeline
       POSTGRES_DB: pipeline
-    # TODO: healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d pipeline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
   redis:
     image: redis:7
-    # TODO: healthcheck
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
 
 volumes:
   pipeline_data:

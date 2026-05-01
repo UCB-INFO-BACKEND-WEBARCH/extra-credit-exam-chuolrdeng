@@ -1,16 +1,14 @@
-"""rq worker entrypoint — student stub.
+"""RQ worker entrypoint.
 
-When this container starts, it should connect to Redis and process jobs from
-the pipeline queue. Implement stage functions in this file (or a module
-imported here) and the queue chaining strategy that runs them sequentially.
+Starts listening on the "pipeline" queue. The API container is responsible
+for running db.create_all() at startup; the worker has no Flask dependency.
 """
 
 import os
 
 from redis import Redis
-from rq import Queue, Worker
+from rq import Worker
 
 if __name__ == "__main__":
     redis_conn = Redis.from_url(os.environ["REDIS_URL"])
-    # TODO: replace ["default"] with whatever queue name you use
-    Worker(["default"], connection=redis_conn).work()
+    Worker(["pipeline"], connection=redis_conn).work()
